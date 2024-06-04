@@ -1,0 +1,44 @@
+ 
+//Creamos las redes
+
+docker network create --subnet=172.2.0.0/16 subnet1
+docker network create --subnet=172.3.0.0/16 subnet2
+docker network create --subnet=172.4.0.0/16 subnet3
+docker network create --subnet=172.5.0.0/16 subnet4
+docker network create --subnet=172.6.0.0/16 subnet5
+
+
+//Crear el switch Open vSwitch
+
+sudo ovs-vsctl add-br switch-DDOS
+sudo ifconfig switch-DDOS up
+sudo ovs-vsctl add-port switch-DDOS eno2
+sudo ifconfig eno2 0
+sudo dhclient switch-DDOS
+
+
+//Creo los contenedores
+
+sudo docker run -dit --name usuario --network subnet1 --ip 172.2.0.2 alpine:latest ash
+sudo docker run -dit --name slaver --network subnet2 --ip 172.3.0.2 alpine:latest ash
+sudo docker run -dit --name slave1 --network subnet3 --ip 172.4.0.2 alpine:latest ash
+sudo docker run -dit --name slave2 --network subnet4 --ip 172.5.0.2 alpine:latest ash
+sudo docker run -dit -p 8080:80 --name servidor --network subnet5 --ip 172.6.0.2 nginx:latest
+
+
+
+//agregamos los puertos virtuales
+
+sudo ovs-docker add-port switch-DDOS eth0 usuario --ipaddress=172.2.0.2/16
+sudo ovs-docker add-port switch-DDOS eth0 slaver --ipaddress=172.3.0.2/16
+sudo ovs-docker add-port switch-DDOS eth0 slave1 --ipaddress=172.4.0.2/16
+sudo ovs-docker add-port switch-DDOS eth0 slave2 --ipaddress=172.5.0.2/16
+sudo ovs-docker add-port switch-DDOS eth0 servidor --ipaddress=172.6.0.2/16
+
+
+//Levanto los contenedores
+
+sudo docker start usuario slaver slave1 slave2 servidor
+
+
+
